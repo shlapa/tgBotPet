@@ -2,7 +2,7 @@ package telegram
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -86,12 +86,12 @@ func (c *Client) DoRequest(method string, query url.Values) (data []byte, err er
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = resp.Body.Close() }()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	resp.Body.Close()
 
 	return body, nil
 }

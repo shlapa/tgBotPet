@@ -1,9 +1,12 @@
 package telegram
 
 import (
+	"errors"
 	"log"
 	"net/url"
 	"strings"
+	"tgBot/lib/errorsLib"
+	"tgBot/storage"
 )
 
 const (
@@ -17,15 +20,70 @@ func (p *Processor) doCmd(text string, chatID int, username string) error {
 
 	log.Printf("DO_COMMAND(%v, %v)", text, username)
 
+	if isAddCmd(text) {
+		return p.savePage(text, chatID, username)
+	}
+
 	switch text {
 	case Help:
-		break
+		return p.sendHelp(chatID)
 	case Rnd:
-		break
+		return p.sendRandom(chatID, username)
 	case Start:
-		break
+		return p.sendHello(chatID, username)
 	default:
+		return p.tg.SendMessage(chatID, msgUnknownCommand)
 	}
+}
+
+func (p *Processor) savePage(textURL string, chatID int, username string) (err error) {
+	defer func() { err = errorsLib.Wrap("cantSavePage", err) }()
+
+	page := &storage.Page{
+		URL:      textURL,
+		UserName: username,
+	}
+
+	isExist, err := p.storage.IsExists(page)
+	if err != nil {
+		return err
+	} else if isExist {
+		return p.tg.SendMessage(chatID, "")
+	}
+
+	if err = p.storage.Save(page); err != nil {
+		return err
+	}
+
+	if err = p.tg.SendMessage(chatID, msgSaved); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *Processor) sendRandom(chatID int, username string) (err error) {
+	defer func() { err = errorsLib.Wrap("cantSavePage", err) }()
+
+	page, err := p.storage.PickRandom(username)
+	if err != nil && errors.Is(err, errorsLib.ErrNoSavedPage) {
+		return err
+	}
+	if errors.Is(err, errorsLib.ErrNoSavedPage) {
+		return p.tg.SendMessage(chatID, msgNoSavedPages)
+	}
+	if err := p.tg.SendMessage(chatID, page.URL); err != nil {
+		return err
+	}
+
+	return p.storage.Remove(page)
+}
+
+func (p *Processor) sendHelp(chatID int) (err error) {
+	return p.tg.SendMessage(chatID, msgHelp)
+}
+
+func (p *Processor) sendHello(chatID int, username string) (err error) {
+	return p.tg.SendMessage(chatID, username+"! "+msgHello)
 }
 
 func isAddCmd(text string) bool {

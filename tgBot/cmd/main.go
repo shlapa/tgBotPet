@@ -1,9 +1,12 @@
 package main
 
 import (
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"log"
 	"os"
+	telegram2 "tgBot/clients/telegram"
+	event_consumer "tgBot/consumer/event-consumer"
+	"tgBot/events/telegram"
+	"tgBot/storage/files"
 )
 
 func mustToken() string {
@@ -15,9 +18,12 @@ func mustToken() string {
 }
 
 func main() {
-	bot, err := tgbotapi.NewBotAPI(mustToken())
-	if err != nil {
-		log.Panic(err)
+	eventsProcessor := telegram.New(telegram2.NewClient("api.telegram.org", mustToken()), files.NewStorage("storage"))
+
+	log.Print("Starting bot...")
+
+	consumer := event_consumer.New(eventsProcessor, eventsProcessor, 100)
+	if err := consumer.Start(); err != nil {
+		log.Fatal("Starting consumer failed: ", err)
 	}
-	bot.Debug = true
 }
