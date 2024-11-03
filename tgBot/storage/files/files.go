@@ -1,6 +1,7 @@
 package files
 
 import (
+	"context"
 	"encoding/gob"
 	"errors"
 	"fmt"
@@ -20,11 +21,11 @@ type Storage struct {
 	basePath string
 }
 
-func NewStorage(basePath string) *Storage {
-	return &Storage{basePath: basePath}
+func NewStorage(basePath string) Storage {
+	return Storage{basePath: basePath}
 }
 
-func (s *Storage) Save(page *storage.Page) (err error) {
+func (s Storage) Save(ctx context.Context, page *storage.Page) (err error) {
 	defer func() {
 		if err != nil {
 			err = errorsLib.Wrap("can't save: ", err)
@@ -67,12 +68,24 @@ func fileName(p *storage.Page) (string, error) {
 	return p.Hash()
 }
 
-func (s Storage) PickRandom(userName string) (page *storage.Page, err error) {
+func (s Storage) PickRandom(ctx context.Context, userName string) (page *storage.Page, err error) {
 	defer func() { err = errorsLib.Wrap("can't pick random page: ", err) }()
+
 	path := filepath.Join(s.basePath, userName)
+
 	files, err := os.ReadDir(path)
 	if err != nil {
-		return nil, err
+		// Проверяем, существует ли директория
+		if os.IsNotExist(err) {
+			// Если директории нет, создаем её
+			if mkErr := os.MkdirAll(path, os.ModePerm); mkErr != nil {
+				return nil, fmt.Errorf("failed to create directory %s: %w", path, mkErr)
+			}
+			// Возвращаем ошибку, что директория создана, но файлов нет
+			return nil, errors.New("no files found, created empty directory")
+		}
+		// Если ошибка не связана с отсутствием директории, возвращаем её
+		return nil, fmt.Errorf("failed to read directory %s: %w", path, err)
 	}
 
 	if len(files) == 0 {
@@ -83,11 +96,14 @@ func (s Storage) PickRandom(userName string) (page *storage.Page, err error) {
 	r := rand.Intn(len(files))
 
 	file := files[r]
+	if file == nil {
+		return nil, errors.New("selected file is nil")
+	}
 
-	return s.DecodePage(filepath.Join(file.Name()))
+	return s.DecodePage(ctx, filepath.Join(file.Name()))
 }
 
-func (s Storage) Remove(page *storage.Page) (err error) {
+func (s Storage) Remove(ctx context.Context, page *storage.Page) (err error) {
 	filename := filepath.Join(s.basePath, page.UserName)
 	if err = os.Remove(filename); err != nil {
 		return errorsLib.Wrap("can't remove file: ", err)
@@ -102,7 +118,7 @@ func (s Storage) Remove(page *storage.Page) (err error) {
 	return nil
 }
 
-func (s Storage) DecodePage(filePath string) (page *storage.Page, err error) {
+func (s Storage) DecodePage(ctx context.Context, filePath string) (page *storage.Page, err error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, errorsLib.Wrap("can't open file: ", err)
@@ -117,12 +133,12 @@ func (s Storage) DecodePage(filePath string) (page *storage.Page, err error) {
 	return &p, nil
 }
 
-func (s Storage) IsExists(p *storage.Page) (bool, error) {
+func (s Storage) IsExists(ctx context.Context, p *storage.Page) (bool, error) {
 	fileName, err := fileName(p)
 	if err != nil {
 		return false, errorsLib.Wrap("can't check if file exists: ", err)
 	}
-	path := filepath.Join(s.basePath, fileName)
+	path := filepath.Join(s.basePath, p.UserName, fileName)
 
 	switch _, err = os.Stat(path); {
 	case errors.Is(err, os.ErrNotExist):

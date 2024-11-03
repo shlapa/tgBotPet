@@ -1,6 +1,7 @@
 package telegram
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/url"
@@ -44,14 +45,14 @@ func (p *Processor) savePage(textURL string, chatID int, username string) (err e
 		UserName: username,
 	}
 
-	isExist, err := p.storage.IsExists(page)
+	isExist, err := p.storage.IsExists(context.Background(), page)
 	if err != nil {
 		return err
 	} else if isExist {
 		return p.tg.SendMessage(chatID, "")
 	}
 
-	if err = p.storage.Save(page); err != nil {
+	if err = p.storage.Save(context.Background(), page); err != nil {
 		return err
 	}
 
@@ -64,7 +65,7 @@ func (p *Processor) savePage(textURL string, chatID int, username string) (err e
 func (p *Processor) sendRandom(chatID int, username string) (err error) {
 	defer func() { err = errorsLib.Wrap("cantSavePage", err) }()
 
-	page, err := p.storage.PickRandom(username)
+	page, err := p.storage.PickRandom(context.Background(), username)
 	if err != nil && errors.Is(err, errorsLib.ErrNoSavedPage) {
 		return err
 	}
@@ -75,7 +76,7 @@ func (p *Processor) sendRandom(chatID int, username string) (err error) {
 		return err
 	}
 
-	return p.storage.Remove(page)
+	return p.storage.Remove(context.Background(), page)
 }
 
 func (p *Processor) sendHelp(chatID int) (err error) {

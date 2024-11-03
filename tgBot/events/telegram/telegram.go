@@ -5,6 +5,7 @@ import (
 	"tgBot/events"
 	"tgBot/lib/errorsLib"
 	"tgBot/storage"
+	"tgBot/storage/files"
 )
 
 type Processor struct {
@@ -18,7 +19,7 @@ type Meta struct {
 	userName string
 }
 
-func New(client *telegram.Client, storage storage.Storage) *Processor {
+func New(client *telegram.Client, storage files.Storage) *Processor {
 	return &Processor{
 		tg:      client,
 		storage: storage,
