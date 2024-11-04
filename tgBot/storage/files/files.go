@@ -107,11 +107,15 @@ func (s Storage) PickRandom(ctx context.Context, userName string) (page *storage
 }
 
 func (s Storage) Remove(ctx context.Context, page *storage.Page) (err error) {
-	filename := filepath.Join(s.basePath, page.UserName)
-	if err = os.Remove(filename); err != nil {
+	fileName, err := fileName(page)
+	if err != nil {
+		return errorsLib.Wrap("can't delete random page: ", err)
+	}
+	path := filepath.Join(s.basePath, page.UserName, fileName)
+	if err = os.Remove(path); err != nil {
 		return errorsLib.Wrap("can't remove file: ", err)
 	}
-	path := filepath.Join(s.basePath, page.UserName, filename)
+	path = filepath.Join(s.basePath, page.UserName, path)
 
 	if err = os.Remove(path); err != nil {
 		msg := fmt.Sprintf("can't remove file: %s", path)
