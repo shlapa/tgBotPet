@@ -27,38 +27,28 @@ func NewStorage(basePath string) Storage {
 }
 
 func (s Storage) Save(ctx context.Context, page *storage.Page) (err error) {
-	defer func() {
-		if err != nil {
-			err = errorsLib.Wrap("can't save: ", err)
-		}
-	}()
+	defer func() { err = errorsLib.Wrap("can't save page", err) }()
 
-	// Определяем путь к файлу
-	filePath := filepath.Join(s.basePath, page.UserName)
+	fPath := filepath.Join(s.basePath, page.UserName)
 
-	// Создаем необходимые директории
-	if err = os.MkdirAll(filepath.Dir(filePath), defParam); err != nil {
+	if err := os.MkdirAll(fPath, defParam); err != nil {
 		return err
 	}
 
-	// Генерируем имя файла
-	fileName, err := fileName(page)
+	fName, err := fileName(page)
 	if err != nil {
 		return err
 	}
 
-	// Полный путь к файлу
-	filePath = filepath.Join(filePath, fileName)
+	fPath = filepath.Join(fPath, fName)
 
-	// Создаем файл
-	file, err := os.Create(filePath)
+	file, err := os.Create(fPath)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = file.Close() }()
 
-	err = gob.NewEncoder(file).Encode(page)
-	if err != nil {
+	if err := gob.NewEncoder(file).Encode(page); err != nil {
 		return err
 	}
 
@@ -152,8 +142,8 @@ func (s Storage) IsExists(ctx context.Context, p *storage.Page) (bool, error) {
 
 	// Проверяем, существует ли директория
 	dirPath := filepath.Join(s.basePath, p.UserName)
-	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-		return false, errorsLib.Wrap(fmt.Sprintf("directory does not exist: %s", dirPath), err)
+	if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
+		return false, errorsLib.Wrap(fmt.Sprintf("can't create directory: %s", dirPath), err)
 	}
 
 	// Проверяем, существует ли сам файл
