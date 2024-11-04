@@ -48,8 +48,9 @@ func (p *Processor) savePage(textURL string, chatID int, username string) (err e
 	isExist, err := p.storage.IsExists(context.Background(), page)
 	if err != nil {
 		return err
-	} else if isExist {
-		return p.tg.SendMessage(chatID, "")
+	}
+	if isExist {
+		return p.tg.SendMessage(chatID, msgAlreadyExists)
 	}
 
 	if err = p.storage.Save(context.Background(), page); err != nil {
@@ -67,7 +68,7 @@ func (p *Processor) sendRandom(chatID int, username string) (err error) {
 
 	page, err := p.storage.PickRandom(context.Background(), username)
 	if err != nil && errors.Is(err, errorsLib.ErrNoSavedPage) {
-		return err
+		return p.tg.SendMessage(chatID, msgHaveNotLinked)
 	}
 	if errors.Is(err, errorsLib.ErrNoSavedPage) {
 		return p.tg.SendMessage(chatID, msgNoSavedPages)

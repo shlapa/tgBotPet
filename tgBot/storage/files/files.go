@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -100,7 +101,9 @@ func (s Storage) PickRandom(ctx context.Context, userName string) (page *storage
 		return nil, errors.New("selected file is nil")
 	}
 
-	return s.DecodePage(ctx, filepath.Join(file.Name()))
+	path = filepath.Join(path, file.Name())
+
+	return s.DecodePage(ctx, filepath.Join(path))
 }
 
 func (s Storage) Remove(ctx context.Context, page *storage.Page) (err error) {
@@ -136,17 +139,26 @@ func (s Storage) DecodePage(ctx context.Context, filePath string) (page *storage
 func (s Storage) IsExists(ctx context.Context, p *storage.Page) (bool, error) {
 	fileName, err := fileName(p)
 	if err != nil {
-		return false, errorsLib.Wrap("can't check if file exists: ", err)
+		return false, errorsLib.Wrap("can't generate file name: ", err)
 	}
+
+	// Собираем полный путь к файлу
 	path := filepath.Join(s.basePath, p.UserName, fileName)
+	log.Printf("Checking existence of file at path: %s\n", path)
 
-	switch _, err = os.Stat(path); {
-	case errors.Is(err, os.ErrNotExist):
-		return false, err
-	case err != nil:
-		msg := fmt.Sprintf("can't check if file exists: %s", path)
-		return false, errorsLib.Wrap(msg, err)
+	// Проверяем, существует ли директория
+	dirPath := filepath.Join(s.basePath, p.UserName)
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		return false, errorsLib.Wrap(fmt.Sprintf("directory does not exist: %s", dirPath), err)
 	}
 
-	return true, nil
+	// Проверяем, существует ли сам файл
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		log.Println("File does not exist:", path)
+		return false, nil // Файл не найден, это не ошибка
+	} else if err != nil {
+		return false, errorsLib.Wrap(fmt.Sprintf("error checking file existence at path: %s", path), err)
+	}
+
+	return true, nil // Файл существует
 }
