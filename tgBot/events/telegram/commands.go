@@ -11,9 +11,12 @@ import (
 )
 
 const (
-	Rnd   = "/rnd"
-	Help  = "/help"
-	Start = "/start"
+	Rnd           = "/rnd"
+	Help          = "/help"
+	Start         = "/start"
+	Delete        = "/delete"
+	History       = "/history"
+	DeleteHistory = "/hd"
 )
 
 func (p *Processor) doCmd(text string, chatID int, username string) error {
@@ -32,6 +35,9 @@ func (p *Processor) doCmd(text string, chatID int, username string) error {
 		return p.sendRandom(chatID, username)
 	case Start:
 		return p.sendHello(chatID, username)
+	case Delete:
+		page := p.lastLink[chatID]
+		return p.storage.Remove(context.Background(), page)
 	default:
 		return p.tg.SendMessage(chatID, msgUnknownCommand)
 	}
@@ -60,6 +66,9 @@ func (p *Processor) savePage(textURL string, chatID int, username string) (err e
 	if err = p.tg.SendMessage(chatID, msgSaved); err != nil {
 		return err
 	}
+
+	p.lastLink[chatID] = page
+
 	return nil
 }
 
@@ -77,7 +86,9 @@ func (p *Processor) sendRandom(chatID int, username string) (err error) {
 		return err
 	}
 
-	return p.storage.Remove(context.Background(), page)
+	p.lastLink[chatID] = page
+
+	return nil
 }
 
 func (p *Processor) sendHelp(chatID int) (err error) {

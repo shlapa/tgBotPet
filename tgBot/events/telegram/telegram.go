@@ -9,9 +9,10 @@ import (
 )
 
 type Processor struct {
-	tg      *telegram.Client
-	offset  int
-	storage storage.Storage
+	tg       *telegram.Client
+	offset   int
+	storage  storage.Storage
+	lastLink map[int]*storage.Page
 }
 
 type Meta struct {
@@ -19,10 +20,11 @@ type Meta struct {
 	userName string
 }
 
-func New(client *telegram.Client, storage files.Storage) *Processor {
+func New(client *telegram.Client, storageFiles files.Storage) *Processor {
 	return &Processor{
-		tg:      client,
-		storage: storage,
+		tg:       client,
+		storage:  storageFiles,
+		lastLink: make(map[int]*storage.Page),
 	}
 }
 

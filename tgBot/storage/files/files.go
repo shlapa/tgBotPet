@@ -97,6 +97,9 @@ func (s Storage) PickRandom(ctx context.Context, userName string) (page *storage
 }
 
 func (s Storage) Remove(ctx context.Context, page *storage.Page) (err error) {
+	if page == nil {
+		return errorsLib.Wrap("page is nil", errors.New("page is nil"))
+	}
 	fileName, err := fileName(page)
 	if err != nil {
 		return errorsLib.Wrap("can't delete random page: ", err)
