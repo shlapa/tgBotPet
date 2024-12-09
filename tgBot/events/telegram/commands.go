@@ -11,12 +11,13 @@ import (
 )
 
 const (
-	Rnd           = "/rnd"
-	Help          = "/help"
-	Start         = "/start"
-	Delete        = "/delete"
-	History       = "/history"
-	DeleteHistory = "/hd"
+	Rnd             = "/rnd"
+	Help            = "/help"
+	Start           = "/start"
+	Delete          = "/delete"
+	AddAssociations = "/add_associations"
+	LastLink        = "/get_last_link"
+	DeleteHistory   = "/deleteLink"
 )
 
 func (p *Processor) doCmd(text string, chatID int, username string) error {
@@ -37,18 +38,24 @@ func (p *Processor) doCmd(text string, chatID int, username string) error {
 		return p.sendHello(chatID, username)
 	case Delete:
 		page := p.lastLink[chatID]
-		return p.storage.Remove(context.Background(), page)
+		return p.Remove(chatID, page)
 	default:
 		return p.tg.SendMessage(chatID, msgUnknownCommand)
 	}
+}
+
+func (p *Processor) Remove(id int, page *storage.Page) error {
+
+	return nil
 }
 
 func (p *Processor) savePage(textURL string, chatID int, username string) (err error) {
 	defer func() { err = errorsLib.Wrap("cantSavePage", err) }()
 
 	page := &storage.Page{
-		URL:      textURL,
-		UserName: username,
+		URL:          textURL,
+		UserName:     username,
+		Associations: []string{},
 	}
 
 	isExist, err := p.storage.IsExists(context.Background(), page)
@@ -106,4 +113,27 @@ func isAddCmd(text string) bool {
 func isURL(text string) bool {
 	u, err := url.Parse(text)
 	return err == nil && u.Scheme != "" && u.Host != ""
+}
+
+func (p *Processor) AddAssociations(chatID int, username string) (err error) {
+	page, ok := p.lastLink[chatID]
+	if !ok {
+		return p.tg.SendMessage(chatID, "Сначала добавьте ссылку с помощью команды /add")
+	}
+
+	// Извлечение ассоциаций из текста
+	associations := strings.Split(text, ",")
+	for i := range associations {
+		associations[i] = strings.TrimSpace(associations[i])
+	}
+
+	// Обновление структуры Page
+	page.Associations = append(page.Associations, associations...)
+
+	// Сохранение изменений в базе данных
+	if err := p.storage.Save(context.Background(), page); err != nil {
+		return errorsLib.Wrap("Не удалось обновить ассоциации", err)
+	}
+
+	return p.tg.SendMessage(chatID, "Ассоциации успешно добавлены!")
 }

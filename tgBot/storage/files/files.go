@@ -29,29 +29,6 @@ func NewStorage(basePath string) Storage {
 func (s Storage) Save(ctx context.Context, page *storage.Page) (err error) {
 	defer func() { err = errorsLib.Wrap("can't save page", err) }()
 
-	fPath := filepath.Join(s.basePath, page.UserName)
-
-	if err := os.MkdirAll(fPath, defParam); err != nil {
-		return err
-	}
-
-	fName, err := fileName(page)
-	if err != nil {
-		return err
-	}
-
-	fPath = filepath.Join(fPath, fName)
-
-	file, err := os.Create(fPath)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = file.Close() }()
-
-	if err := gob.NewEncoder(file).Encode(page); err != nil {
-		return err
-	}
-
 	return nil
 }
 
