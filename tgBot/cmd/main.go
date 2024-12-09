@@ -3,8 +3,9 @@ package main
 import (
 	"log"
 	"os"
-	telegram2 "tgBot/clients/telegram"
-	event_consumer "tgBot/consumer/event-consumer"
+	telegramclient "tgBot/clients/telegram"
+	eventconsumer "tgBot/consumer/event-consumer"
+	"tgBot/db"
 	"tgBot/events/telegram"
 	"tgBot/storage/files"
 )
@@ -18,11 +19,16 @@ func mustToken() string {
 }
 
 func main() {
-	eventsProcessor := telegram.New(telegram2.NewClient("api.telegram.org", mustToken()), files.NewStorage("storage"))
+	eventsProcessor := telegram.New(telegramclient.NewClient("api.telegram.org", mustToken()), files.NewStorage("storage"))
+
+	_, err := db.Connect()
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	log.Print("Starting bot...")
 
-	consumer := event_consumer.New(eventsProcessor, eventsProcessor, 100)
+	consumer := eventconsumer.New(eventsProcessor, eventsProcessor, 100)
 	if err := consumer.Start(); err != nil {
 		log.Fatal("Starting consumer failed: ", err)
 	}

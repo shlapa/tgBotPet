@@ -4,12 +4,14 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 	"log"
 	"os"
 	"strconv"
+	"time"
 )
 
-func dbConnect() (*sql.DB, error) {
+func Connect() (*sql.DB, error) {
 	if err := godotenv.Load(); err != nil {
 		log.Print("No .env file found")
 	}
@@ -41,10 +43,15 @@ func dbConnect() (*sql.DB, error) {
 	//	return err
 	//}
 
+	start := time.Now()
+
 	if err = db.Ping(); err != nil {
 		log.Printf("[ERROR] Database ping failed: %v", err)
 		return nil, err
 	}
+
+	elapsed := time.Since(start)
+	log.Printf("[INFO] Database connection is successful. Ping time: %s", elapsed)
 
 	log.Println("[INFO] Database connection established successfully")
 	return db, nil
