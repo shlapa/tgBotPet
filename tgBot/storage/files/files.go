@@ -2,6 +2,7 @@ package files
 
 import (
 	"context"
+	"database/sql"
 	"encoding/gob"
 	"errors"
 	"fmt"
@@ -20,15 +21,24 @@ const (
 
 type Storage struct {
 	basePath string
+	db       *sql.DB
 }
 
-func NewStorage(basePath string) Storage {
-	return Storage{basePath: basePath}
+func NewStorage(basePath string, db *sql.DB) Storage {
+	return Storage{
+		basePath: basePath,
+		db:       db,
+	}
 }
 
 func (s Storage) Save(ctx context.Context, page *storage.Page) (err error) {
 	defer func() { err = errorsLib.Wrap("can't save page", err) }()
-
+	query := `INSERT INTO tg_users ("user", "link", "associations") VALUES ($1, $2, $3)`
+	//err = s.db.QueryRow(query, page.UserName, page.URL, page.Associations).Scan()
+	_, err = s.db.Exec(query, page.UserName, page.URL, page.Associations)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

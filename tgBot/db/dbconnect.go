@@ -16,8 +16,8 @@ func Connect() (*sql.DB, error) {
 		log.Print("No .env file found")
 	}
 
+	var DB *sql.DB
 	var err error
-	var db *sql.DB
 
 	port, err := strconv.Atoi(os.Getenv("DB_PORT"))
 	if err != nil {
@@ -31,7 +31,7 @@ func Connect() (*sql.DB, error) {
 		os.Getenv("DB_NAME"),
 		os.Getenv("DB_SSLMODE"))
 
-	db, err = sql.Open("postgres", connStr)
+	DB, err = sql.Open("postgres", connStr)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func Connect() (*sql.DB, error) {
 
 	start := time.Now()
 
-	if err = db.Ping(); err != nil {
+	if err = DB.Ping(); err != nil {
 		log.Printf("[ERROR] Database ping failed: %v", err)
 		return nil, err
 	}
@@ -54,5 +54,5 @@ func Connect() (*sql.DB, error) {
 	log.Printf("[INFO] Database connection is successful. Ping time: %s", elapsed)
 
 	log.Println("[INFO] Database connection established successfully")
-	return db, nil
+	return DB, nil
 }

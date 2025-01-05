@@ -15,9 +15,9 @@ type Storage interface {
 }
 
 type Page struct {
-	URL          string   `json:"url"`
-	UserName     string   `json:"username"`
-	Associations []string `json:"associations"`
+	URL          string `json:"url"`
+	UserName     string `json:"username"`
+	Associations string `json:"associations"`
 }
 
 func (p *Page) Hash() (string, error) {

@@ -19,12 +19,12 @@ func mustToken() string {
 }
 
 func main() {
-	eventsProcessor := telegram.New(telegramclient.NewClient("api.telegram.org", mustToken()), files.NewStorage("storage"))
-
-	_, err := db.Connect()
+	db, err := db.Connect()
 	if err != nil {
 		log.Fatalln(err)
 	}
+
+	eventsProcessor := telegram.New(telegramclient.NewClient("api.telegram.org", mustToken()), files.NewStorage("storage", db))
 
 	log.Print("Starting bot...")
 

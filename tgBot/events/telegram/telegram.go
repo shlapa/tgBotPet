@@ -52,6 +52,7 @@ func (p *Processor) Fetch(limit int) ([]events.Event, error) {
 func (p *Processor) Process(event events.Event) error {
 	switch event.Type {
 	case events.Message:
+
 		return p.processMessage(event)
 	default:
 		return errorsLib.Wrap("can't process event", errorsLib.ErrUnknownProcess)

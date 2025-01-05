@@ -3,6 +3,7 @@ package telegram
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/url"
 	"strings"
@@ -11,13 +12,12 @@ import (
 )
 
 const (
-	Rnd             = "/rnd"
-	Help            = "/help"
-	Start           = "/start"
-	Delete          = "/delete"
-	AddAssociations = "/add_associations"
-	LastLink        = "/get_last_link"
-	DeleteHistory   = "/deleteLink"
+	Rnd           = "/rnd"
+	Help          = "/help"
+	Start         = "/start"
+	Delete        = "/delete"
+	LastLink      = "/get_last_link"
+	DeleteHistory = "/deleteLink"
 )
 
 func (p *Processor) doCmd(text string, chatID int, username string) error {
@@ -25,9 +25,14 @@ func (p *Processor) doCmd(text string, chatID int, username string) error {
 
 	log.Printf("DO_COMMAND(%v, %v)", text, username)
 
+	// Если это ссылка
 	if isAddCmd(text) {
 		return p.savePage(text, chatID, username)
+	} else if isAddText(text) {
+		return p.processAssociations(chatID, text)
 	}
+
+	// Если это ассоциации
 
 	switch text {
 	case Help:
@@ -55,7 +60,7 @@ func (p *Processor) savePage(textURL string, chatID int, username string) (err e
 	page := &storage.Page{
 		URL:          textURL,
 		UserName:     username,
-		Associations: []string{},
+		Associations: "",
 	}
 
 	isExist, err := p.storage.IsExists(context.Background(), page)
@@ -76,7 +81,31 @@ func (p *Processor) savePage(textURL string, chatID int, username string) (err e
 
 	p.lastLink[chatID] = page
 
+	if err = p.tg.SendMessage(chatID, "Добавить ассоциации для сохраненной ссылки ?:"); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func (p *Processor) AddAssociations(chatID int, input string) error {
+	return p.processAssociations(chatID, input)
+}
+
+func (p *Processor) processAssociations(chatID int, input string) error {
+	page, ok := p.lastLink[chatID]
+	if !ok {
+		return p.tg.SendMessage(chatID, "Не удалось найти последнюю ссылку. Попробуйте снова.")
+	}
+
+	// Сохранение ассоциаций
+	page.Associations = input
+
+	if err := p.storage.Save(context.Background(), page); err != nil {
+		return errorsLib.Wrap("cantSaveAssociations", err)
+	}
+
+	return p.tg.SendMessage(chatID, "Ассоциации успешно сохранены.")
 }
 
 func (p *Processor) sendRandom(chatID int, username string) (err error) {
@@ -115,25 +144,20 @@ func isURL(text string) bool {
 	return err == nil && u.Scheme != "" && u.Host != ""
 }
 
-func (p *Processor) AddAssociations(chatID int, username string) (err error) {
-	page, ok := p.lastLink[chatID]
-	if !ok {
-		return p.tg.SendMessage(chatID, "Сначала добавьте ссылку с помощью команды /add")
+func isAddText(text string) bool {
+	return isText(text)
+}
+
+func isText(text string) bool {
+	if strings.TrimSpace(text) == "" {
+		return false
 	}
-
-	// Извлечение ассоциаций из текста
-	associations := strings.Split(text, ",")
-	for i := range associations {
-		associations[i] = strings.TrimSpace(associations[i])
+	if isURL(text) {
+		return false
 	}
-
-	// Обновление структуры Page
-	page.Associations = append(page.Associations, associations...)
-
-	// Сохранение изменений в базе данных
-	if err := p.storage.Save(context.Background(), page); err != nil {
-		return errorsLib.Wrap("Не удалось обновить ассоциации", err)
+	if strings.HasPrefix(text, "/") {
+		return false
 	}
-
-	return p.tg.SendMessage(chatID, "Ассоциации успешно добавлены!")
+	fmt.Printf("")
+	return true
 }
