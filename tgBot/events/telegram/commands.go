@@ -12,27 +12,46 @@ import (
 )
 
 const (
-	Rnd           = "/rnd"
-	Help          = "/help"
-	Start         = "/start"
-	Delete        = "/delete"
-	LastLink      = "/get_last_link"
-	DeleteHistory = "/deleteLink"
+	Rnd      = "/rnd"
+	Help     = "/help"
+	Start    = "/start"
+	Delete   = "/delete"
+	LastLink = "/get_last_link"
 )
 
 func (p *Processor) doCmd(text string, chatID int, username string) error {
 	text = strings.TrimSpace(text)
-
+	pageLastLink := &storage.Page{
+		UserName: username,
+	}
 	log.Printf("DO_COMMAND(%v, %v)", text, username)
 
-	// Если это ссылка
+	words := []string{"anime", "hentai", "porn"}
+
 	if isAddCmd(text) {
+		for _, word := range words {
+			if strings.Contains(text, word) {
+				_ = p.tg.SendMessage(chatID, "Богохульство! Но я сохраню !😤")
+			}
+		}
 		return p.savePage(text, chatID, username)
 	} else if isAddText(text) {
+		for _, word := range words {
+			if strings.Contains(text, word) {
+				_ = p.tg.SendMessage(chatID, "Богохульство! Но я сохраню !😤")
+			}
+		}
 		return p.processAssociations(chatID, text)
 	}
 
-	// Если это ассоциации
+	if strings.HasPrefix(text, Delete) {
+		space := strings.TrimSpace(strings.TrimPrefix(text, Delete))
+		if space == "" {
+			return p.tg.SendMessage(chatID, "Пожалуйста, укажи ссылку, что желаешь уничтожить. 🔗💀")
+		}
+		pageLastLink.URL = space
+		return p.Remove(chatID, pageLastLink)
+	}
 
 	switch text {
 	case Help:
@@ -41,17 +60,17 @@ func (p *Processor) doCmd(text string, chatID int, username string) error {
 		return p.sendRandom(chatID, username)
 	case Start:
 		return p.sendHello(chatID, username)
-	case Delete:
-		page := p.lastLink[chatID]
-		return p.Remove(chatID, page)
 	default:
 		return p.tg.SendMessage(chatID, msgUnknownCommand)
 	}
 }
 
-func (p *Processor) Remove(id int, page *storage.Page) error {
-
-	return nil
+func (p *Processor) Remove(chatID int, pageLastLink *storage.Page) error {
+	err := p.storage.Remove(context.Background(), pageLastLink)
+	if err != nil {
+		return p.tg.SendMessage(chatID, "Эта ссылка исчезла в туманном мире... 👻")
+	}
+	return p.tg.SendMessage(chatID, "Ты избавился от свитка, как рыцарь от старого оружия. ⚔️")
 }
 
 func (p *Processor) savePage(textURL string, chatID int, username string) (err error) {
@@ -81,7 +100,7 @@ func (p *Processor) savePage(textURL string, chatID int, username string) (err e
 
 	p.lastLink[chatID] = page
 
-	if err = p.tg.SendMessage(chatID, "Добавить ассоциации для сохраненной ссылки ?:"); err != nil {
+	if err = p.tg.SendMessage(chatID, "Желаешь добавить ассоциации к этому свитку? ✍️"); err != nil {
 		return err
 	}
 
@@ -95,7 +114,7 @@ func (p *Processor) AddAssociations(chatID int, input string) error {
 func (p *Processor) processAssociations(chatID int, input string) error {
 	page, ok := p.lastLink[chatID]
 	if !ok {
-		return p.tg.SendMessage(chatID, "Не удалось найти последнюю ссылку. Попробуйте снова.")
+		return p.tg.SendMessage(chatID, "Не удалось найти твой последний свиток. Попробуй снова, о рыцарь. 🏰")
 	}
 
 	// Сохранение ассоциаций
@@ -105,7 +124,7 @@ func (p *Processor) processAssociations(chatID int, input string) error {
 		return errorsLib.Wrap("cantSaveAssociations", err)
 	}
 
-	return p.tg.SendMessage(chatID, "Ассоциации успешно сохранены.")
+	return p.tg.SendMessage(chatID, "Ассоциации успешно добавлены. ✨")
 }
 
 func (p *Processor) sendRandom(chatID int, username string) (err error) {
