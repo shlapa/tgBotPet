@@ -12,11 +12,12 @@ import (
 )
 
 const (
-	Rnd      = "/rnd"
-	Help     = "/help"
-	Start    = "/start"
-	Delete   = "/delete"
-	LastLink = "/get_last_link"
+	Rnd        = "/rnd"
+	Help       = "/help"
+	Start      = "/start"
+	Delete     = "/delete"
+	LastLink   = "/get_last_link"
+	SearchLink = "/search_link"
 )
 
 func (p *Processor) doCmd(text string, chatID int, username string) error {
@@ -120,7 +121,7 @@ func (p *Processor) processAssociations(chatID int, input string) error {
 	// Сохранение ассоциаций
 	page.Associations = input
 
-	if err := p.storage.Save(context.Background(), page); err != nil {
+	if err := p.storage.SaveAssociations(context.Background(), page); err != nil {
 		return errorsLib.Wrap("cantSaveAssociations", err)
 	}
 

@@ -34,12 +34,25 @@ func (s Storage) Save(ctx context.Context, page *storage.Page) (err error) {
 	return nil
 }
 
+func (s Storage) SaveAssociations(ctx context.Context, page *storage.Page) (err error) {
+	defer func() { err = errorsLib.Wrap("can't save page", err) }()
+	query := `UPDATE tg_users SET "associations" = $1 WHERE "user" = $2 AND "link" = $3`
+	_, err = s.db.Exec(query, page.Associations, page.UserName, page.URL)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s Storage) PickRandom(ctx context.Context, userName string) (page *storage.Page, err error) {
 	defer func() { err = errorsLib.Wrap("can't pick random page: ", err) }()
 	query := `SELECT "link" FROM tg_users where "user" = $1 ORDER BY RANDOM() DESC LIMIT 1`
 	var linkDB string
 	err = s.db.QueryRow(query, userName).Scan(&linkDB)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errorsLib.ErrNoSavedPage
+		}
 		return nil, err
 	}
 
