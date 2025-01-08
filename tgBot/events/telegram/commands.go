@@ -3,7 +3,6 @@ package telegram
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"net/url"
 	"os"
@@ -41,17 +40,26 @@ func (p *Processor) doCmd(text string, chatID int, username string) error {
 	if isAddCmd(text) {
 		for _, word := range words {
 			if strings.Contains(text, word) {
-				_ = p.tg.SendMessage(chatID, "Богохульство! Но я сохраню !😤")
+				if err := p.tg.SendMessage(chatID, "Богохульство! Но я сохраню !😤"); err != nil {
+					return err
+				}
 			}
 		}
 		return p.savePage(text, chatID, username)
 	} else if isAddText(text) {
 		for _, word := range words {
 			if strings.Contains(text, word) {
-				_ = p.tg.SendMessage(chatID, "Богохульство! Но я сохраню !😤")
+				if err := p.tg.SendMessage(chatID, "Богохульство! Но я сохраню !😤"); err != nil {
+					return err
+				}
 			}
 		}
 		return p.processAssociations(chatID, text)
+	}
+
+	err := p.clearLastLink(chatID)
+	if err != nil {
+		return err
 	}
 
 	if strings.HasPrefix(text, Delete) && len(strings.TrimPrefix(text, Delete)) > 0 && strings.TrimPrefix(text, Delete)[0] == ' ' {
@@ -104,11 +112,12 @@ func (p *Processor) getLastLink(chatID int, username string) (err error) {
 	defer func() { err = errorsLib.Wrap("cantGetLastLink", err) }()
 
 	page, err := p.storage.LastLink(context.Background(), username)
-	if err != nil && errors.Is(err, errorsLib.ErrNoSavedPage) {
-		return p.tg.SendMessage(chatID, msgNoSavedPages)
-	}
-	if errors.Is(err, errorsLib.ErrNoSavedPage) {
-		return p.tg.SendMessage(chatID, msgHaveNotLinked)
+	if err != nil {
+		if errors.Is(err, errorsLib.ErrNoSavedPage) {
+			return p.tg.SendMessage(chatID, msgNoSavedPages)
+		} else {
+			return err
+		}
 	}
 	if err := p.tg.SendMessage(chatID, page.URL); err != nil {
 		return err
@@ -125,8 +134,6 @@ func (p *Processor) searchLink(chatID int, pageLastLink *storage.Page) (err erro
 	if err != nil {
 		if errors.Is(err, errorsLib.ErrNoSavedPage) {
 			return p.tg.SendMessage(chatID, msgNoSavedPages)
-		} else if errors.Is(err, errorsLib.ErrNoSavedPage) {
-			return p.tg.SendMessage(chatID, msgHaveNotLinked)
 		} else {
 			return err
 		}
@@ -224,7 +231,6 @@ func (p *Processor) processAssociations(chatID int, input string) error {
 		return p.tg.SendMessage(chatID, "Рад бы поболтать, о славный рыцарь, но королевство в опасности, а работы невпроворот! 🏰⚔️ Попробуй задать команду, чтобы помочь делу!\n")
 	}
 
-	// Сохранение ассоциаций
 	page.Associations = input
 
 	if err := p.storage.SaveAssociations(context.Background(), page); err != nil {
@@ -241,8 +247,6 @@ func (p *Processor) sendRandom(chatID int, username string) (err error) {
 	if err != nil {
 		if errors.Is(err, errorsLib.ErrNoSavedPage) {
 			return p.tg.SendMessage(chatID, msgNoSavedPages)
-		} else if errors.Is(err, errorsLib.ErrNoSavedPage) {
-			return p.tg.SendMessage(chatID, msgHaveNotLinked)
 		} else {
 			return err
 		}
@@ -287,6 +291,10 @@ func isText(text string) bool {
 	if strings.HasPrefix(text, "/") {
 		return false
 	}
-	fmt.Printf("")
 	return true
+}
+
+func (p *Processor) clearLastLink(chatID int) error {
+	delete(p.lastLink, chatID)
+	return p.tg.SendMessage(chatID, "Последняя ссылка была удалена. Больше я не помню её. 😶‍🌫️")
 }

@@ -26,7 +26,7 @@ func NewStorage(basePath string, db *sql.DB) Storage {
 }
 
 func (s Storage) LastLink(ctx context.Context, userName string) (page *storage.Page, err error) {
-	defer func() { err = errorsLib.Wrap("can't get last link", err) }()
+	defer func() { err = errorsLib.Wrap("can't get last link for user "+userName, err) }()
 	query := `SELECT * FROM tg_users WHERE "user" = $1 ORDER BY id_link DESC LIMIT 1`
 	var linkDB string
 	err = s.db.QueryRow(query, userName).Scan(&linkDB)
@@ -45,8 +45,8 @@ func (s Storage) LastLink(ctx context.Context, userName string) (page *storage.P
 }
 
 func (s Storage) SearchLink(ctx context.Context, p *storage.Page) (page *storage.Page, err error) {
-	defer func() { err = errorsLib.Wrap("can't pick link", err) }()
-	query := `SELECT "link" FROM tg_users where "associations" = $1 ORDER BY RANDOM() DESC LIMIT 1`
+	defer func() { err = errorsLib.Wrap("can't pick link for associations "+p.Associations, err) }()
+	query := `SELECT "link" FROM tg_users WHERE "associations" = $1 ORDER BY RANDOM() DESC LIMIT 1`
 	var linkDB string
 	err = s.db.QueryRow(query, p.Associations).Scan(&linkDB)
 	if err != nil {
@@ -63,8 +63,7 @@ func (s Storage) SearchLink(ctx context.Context, p *storage.Page) (page *storage
 }
 
 func (s Storage) GetHistory(ctx context.Context, userName string) (pages []*storage.Page, err error) {
-	defer func() { err = errorsLib.Wrap("can't get history", err) }() // Обертка ошибки для улучшения контекста
-
+	defer func() { err = errorsLib.Wrap("can't get history for user "+userName, err) }()
 	query := `SELECT "link" FROM tg_users WHERE "user" = $1`
 	rows, err := s.db.QueryContext(ctx, query, userName)
 	if err != nil {
@@ -73,7 +72,6 @@ func (s Storage) GetHistory(ctx context.Context, userName string) (pages []*stor
 	defer rows.Close()
 
 	var pageList []*storage.Page
-
 	for rows.Next() {
 		var linkDB string
 		if err := rows.Scan(&linkDB); err != nil {
@@ -96,7 +94,7 @@ func (s Storage) GetHistory(ctx context.Context, userName string) (pages []*stor
 }
 
 func (s Storage) Save(ctx context.Context, page *storage.Page) (err error) {
-	defer func() { err = errorsLib.Wrap("can't save page", err) }()
+	defer func() { err = errorsLib.Wrap("can't save page for user "+page.UserName, err) }()
 	query := `INSERT INTO tg_users ("user", "link", "associations") VALUES ($1, $2, $3)`
 	_, err = s.db.Exec(query, page.UserName, page.URL, page.Associations)
 	if err != nil {
@@ -106,7 +104,7 @@ func (s Storage) Save(ctx context.Context, page *storage.Page) (err error) {
 }
 
 func (s Storage) SaveAssociations(ctx context.Context, page *storage.Page) (err error) {
-	defer func() { err = errorsLib.Wrap("can't save page", err) }()
+	defer func() { err = errorsLib.Wrap("can't save associations for user "+page.UserName, err) }()
 	query := `UPDATE tg_users SET "associations" = $1 WHERE "user" = $2 AND "link" = $3`
 	_, err = s.db.Exec(query, page.Associations, page.UserName, page.URL)
 	if err != nil {
@@ -116,8 +114,8 @@ func (s Storage) SaveAssociations(ctx context.Context, page *storage.Page) (err 
 }
 
 func (s Storage) PickRandom(ctx context.Context, userName string) (page *storage.Page, err error) {
-	defer func() { err = errorsLib.Wrap("can't pick random page: ", err) }()
-	query := `SELECT "link" FROM tg_users where "user" = $1 ORDER BY RANDOM() DESC LIMIT 1`
+	defer func() { err = errorsLib.Wrap("can't pick random page for user "+userName, err) }()
+	query := `SELECT "link" FROM tg_users WHERE "user" = $1 ORDER BY RANDOM() DESC LIMIT 1`
 	var linkDB string
 	err = s.db.QueryRow(query, userName).Scan(&linkDB)
 	if err != nil {
@@ -135,7 +133,7 @@ func (s Storage) PickRandom(ctx context.Context, userName string) (page *storage
 }
 
 func (s Storage) Remove(ctx context.Context, page *storage.Page) (err error) {
-	defer func() { err = errorsLib.Wrap("can't remove page", err) }()
+	defer func() { err = errorsLib.Wrap("can't remove page for user "+page.UserName, err) }()
 	query := `DELETE FROM tg_users WHERE "user" = $1 AND "link" = $2`
 	_, err = s.db.Exec(query, page.UserName, page.URL)
 	if err != nil {
@@ -145,7 +143,7 @@ func (s Storage) Remove(ctx context.Context, page *storage.Page) (err error) {
 }
 
 func (s Storage) RemoveAll(ctx context.Context, userName string) (err error) {
-	defer func() { err = errorsLib.Wrap("can't remove page", err) }()
+	defer func() { err = errorsLib.Wrap("can't remove all pages for user "+userName, err) }()
 	query := `DELETE FROM tg_users WHERE "user" = $1`
 	_, err = s.db.Exec(query, userName)
 	if err != nil {
@@ -155,7 +153,7 @@ func (s Storage) RemoveAll(ctx context.Context, userName string) (err error) {
 }
 
 func (s Storage) IsExists(ctx context.Context, p *storage.Page) (bool, error) {
-	query := `SELECT "user", "link" FROM tg_users where "user" = $1 and link = $2`
+	query := `SELECT "user", "link" FROM tg_users WHERE "user" = $1 AND "link" = $2`
 	var userDB, linkDB string
 	err := s.db.QueryRow(query, p.UserName, p.URL).Scan(&userDB, &linkDB)
 	if err != nil {
@@ -169,7 +167,7 @@ func (s Storage) IsExists(ctx context.Context, p *storage.Page) (bool, error) {
 }
 
 func (s Storage) IsLimit(ctx context.Context, p *storage.Page) (bool, error) {
-	query := `SELECT COUNT(*) FROM tg_users where "user" = $1`
+	query := `SELECT COUNT(*) FROM tg_users WHERE "user" = $1`
 	var countDB string
 	err := s.db.QueryRow(query, p.UserName).Scan(&countDB)
 	if err != nil {
