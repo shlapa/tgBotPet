@@ -192,9 +192,9 @@ func (p *Processor) getHistory(chatID int, username string) error {
 func (p *Processor) Remove(chatID int, pageLastLink *storage.Page) error {
 	err := p.storage.Remove(context.Background(), pageLastLink)
 	if err != nil {
-		return p.tg.SendMessage(chatID, "Эта ссылка исчезла в туманном мире... 👻")
+		return p.tg.SendMessage(chatID, "Я не нахожу такого свитка, милорд. 🧐📜")
 	}
-	return p.tg.SendMessage(chatID, "Ты избавился от свитка, как рыцарь от старого оружия. ⚔️")
+	return p.tg.SendMessage(chatID, "Эта ссылка исчезла в туманном мире... 👻")
 }
 
 func (p *Processor) savePage(textURL string, chatID int, username string) (err error) {

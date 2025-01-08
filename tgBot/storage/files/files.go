@@ -199,7 +199,7 @@ func (s Storage) IsLimit(ctx context.Context, p *storage.Page) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if number <= 10 {
+	if number <= 9 {
 		return false, nil
 	}
 	return true, nil
