@@ -3,6 +3,7 @@ package telegram
 import (
 	"context"
 	"errors"
+	"github.com/joho/godotenv"
 	"log"
 	"net/url"
 	"os"
@@ -30,13 +31,12 @@ func (p *Processor) doCmd(text string, chatID int, username string) error {
 	log.Printf("DO_COMMAND(%v, %v)", text, username)
 
 	//Возможность ассуждать l;)
-
-	ban1 := os.Getenv("ban1")
-	ban2 := os.Getenv("ban2")
-	ban3 := os.Getenv("ban3")
-	ban1 = "ban1"
-	ban2 = "ban2"
-	ban3 = "ban3"
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	ban1 := os.Getenv("BAN_B1")
+	ban2 := os.Getenv("BAN_B2")
+	ban3 := os.Getenv("BAN_B3")
 	words := []string{ban1, ban2, ban3}
 
 	if isAddCmd(text) {
