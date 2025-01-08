@@ -59,10 +59,7 @@ func (p *Processor) doCmd(text string, chatID int, username string) error {
 		return p.processAssociations(chatID, text)
 	}
 
-	err := p.clearLastLink(chatID)
-	if err != nil {
-		return err
-	}
+	p.clearLastLink(chatID)
 
 	if strings.HasPrefix(text, Delete) && len(strings.TrimPrefix(text, Delete)) > 0 && strings.TrimPrefix(text, Delete)[0] == ' ' {
 		space := strings.TrimSpace(strings.TrimPrefix(text, Delete))
@@ -296,7 +293,6 @@ func isText(text string) bool {
 	return true
 }
 
-func (p *Processor) clearLastLink(chatID int) error {
+func (p *Processor) clearLastLink(chatID int) {
 	delete(p.lastLink, chatID)
-	return p.tg.SendMessage(chatID, "Последняя ссылка была удалена. Больше я не помню её. 😶‍🌫️")
 }

@@ -27,8 +27,11 @@ func NewStorage(basePath string, db *sql.DB) Storage {
 
 func (s Storage) LastLink(ctx context.Context, userName string) (page *storage.Page, err error) {
 	defer func() { err = errorsLib.Wrap("can't get last link for user "+userName, err) }()
-	query := `SELECT * FROM tg_users WHERE "user" = $1 ORDER BY id_link DESC LIMIT 1`
+
+	query := `SELECT "link" FROM tg_users WHERE "user" = $1 ORDER BY id_link DESC LIMIT 1`
+
 	var linkDB string
+
 	err = s.db.QueryRow(query, userName).Scan(&linkDB)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -41,7 +44,7 @@ func (s Storage) LastLink(ctx context.Context, userName string) (page *storage.P
 		UserName: userName,
 		URL:      linkDB,
 	}
-	return page, err
+	return page, nil
 }
 
 func (s Storage) SearchLink(ctx context.Context, p *storage.Page) (page *storage.Page, err error) {
