@@ -103,9 +103,9 @@ func (p *Processor) deleteAll(chatID int, username string) (err error) {
 	defer func() { err = errorsLib.Wrap("cantDeleteAll", err) }()
 	err = p.storage.RemoveAll(context.Background(), username)
 	if err != nil {
-		return p.tg.SendMessage(chatID, "Я не нахожу такого свитка, милорд. 🧐📜")
+		return p.tg.SendMessage(chatID, "О, милорд, ваши запасы магических свитков иссякли! Где же волшебство? 🔮✨")
 	}
-	return p.tg.SendMessage(chatID, "Похоже, твои свитки исчезли в бездне времени... ⏳")
+	return p.tg.SendMessage(chatID, "Увы, милорд, ваши свитки унесены ветром времени... ⏳🌀 Возможно, они в другом измерении?")
 }
 
 func (p *Processor) getLastLink(chatID int, username string) (err error) {

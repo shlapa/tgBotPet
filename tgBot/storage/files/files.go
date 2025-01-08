@@ -179,10 +179,21 @@ func (s Storage) RemoveAll(ctx context.Context, userName string) (err error) {
 	defer func() { err = errorsLib.Wrap("can't remove all pages for user "+userName, err) }()
 
 	query := `DELETE FROM tg_users WHERE "user" = $1`
-	_, err = s.db.Exec(query, userName)
+	res, err := s.db.Exec(query, userName)
+
 	if err != nil {
 		return err
 	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return errorsLib.ErrNoSavedPage
+	}
+
 	return nil
 }
 
