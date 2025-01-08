@@ -20,6 +20,7 @@ const (
 	LastLink   = "/get_last_link"
 	SearchLink = "/search_link"
 	GetHistory = "/get_history"
+	DeleteALl  = "/delete_all"
 )
 
 func (p *Processor) doCmd(text string, chatID int, username string) error {
@@ -53,7 +54,7 @@ func (p *Processor) doCmd(text string, chatID int, username string) error {
 		return p.processAssociations(chatID, text)
 	}
 
-	if strings.HasPrefix(text, Delete) {
+	if strings.HasPrefix(text, Delete) && len(strings.TrimPrefix(text, Delete)) > 0 && strings.TrimPrefix(text, Delete)[0] == ' ' {
 		space := strings.TrimSpace(strings.TrimPrefix(text, Delete))
 		if space == "" {
 			return p.tg.SendMessage(chatID, "Пожалуйста, укажи ссылку, что желаешь уничтожить. 🔗💀")
@@ -82,9 +83,21 @@ func (p *Processor) doCmd(text string, chatID int, username string) error {
 		return p.getLastLink(chatID, username)
 	case GetHistory:
 		return p.getHistory(chatID, username)
+	case DeleteALl:
+		return p.deleteAll(chatID, username)
+
 	default:
 		return p.tg.SendMessage(chatID, msgUnknownCommand)
 	}
+}
+
+func (p *Processor) deleteAll(chatID int, username string) (err error) {
+	defer func() { err = errorsLib.Wrap("cantDeleteAll", err) }()
+	err = p.storage.RemoveAll(context.Background(), username)
+	if err != nil {
+		return p.tg.SendMessage(chatID, "Эта ссылка исчезла в туманном мире... 👻")
+	}
+	return p.tg.SendMessage(chatID, "Похоже, твои свитки исчезли в бездне времени... ⏳")
 }
 
 func (p *Processor) getLastLink(chatID int, username string) (err error) {

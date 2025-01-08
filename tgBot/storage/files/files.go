@@ -135,9 +135,19 @@ func (s Storage) PickRandom(ctx context.Context, userName string) (page *storage
 }
 
 func (s Storage) Remove(ctx context.Context, page *storage.Page) (err error) {
-	defer func() { err = errorsLib.Wrap("can't save page", err) }()
+	defer func() { err = errorsLib.Wrap("can't remove page", err) }()
 	query := `DELETE FROM tg_users WHERE "user" = $1 AND "link" = $2`
 	_, err = s.db.Exec(query, page.UserName, page.URL)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s Storage) RemoveAll(ctx context.Context, userName string) (err error) {
+	defer func() { err = errorsLib.Wrap("can't remove page", err) }()
+	query := `DELETE FROM tg_users WHERE "user" = $1`
+	_, err = s.db.Exec(query, userName)
 	if err != nil {
 		return err
 	}

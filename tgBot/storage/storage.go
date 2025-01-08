@@ -12,6 +12,7 @@ type Storage interface {
 	SaveAssociations(ctx context.Context, p *Page) error
 	PickRandom(ctx context.Context, userName string) (*Page, error)
 	Remove(ctx context.Context, p *Page) error
+	RemoveAll(ctx context.Context, userName string) error
 	IsExists(ctx context.Context, p *Page) (bool, error)
 	IsLimit(ctx context.Context, p *Page) (bool, error)
 	LastLink(ctx context.Context, userName string) (*Page, error)
