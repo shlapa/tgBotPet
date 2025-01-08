@@ -158,10 +158,20 @@ func (s Storage) Remove(ctx context.Context, page *storage.Page) (err error) {
 	defer func() { err = errorsLib.Wrap("can't remove page for user "+page.UserName, err) }()
 
 	query := `DELETE FROM tg_users WHERE "user" = $1 AND "link" = $2`
-	_, err = s.db.Exec(query, page.UserName, page.URL)
+	res, err := s.db.Exec(query, page.UserName, page.URL)
 	if err != nil {
 		return err
 	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return errorsLib.ErrNoSavedPage
+	}
+
 	return nil
 }
 
