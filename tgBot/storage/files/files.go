@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strconv"
 	"tgBot/lib/errorsLib"
 	"tgBot/storage"
 )
@@ -83,6 +84,27 @@ func (s Storage) IsExists(ctx context.Context, p *storage.Page) (bool, error) {
 		} else {
 			return false, nil
 		}
+	}
+	return true, nil
+}
+
+func (s Storage) IsLimit(ctx context.Context, p *storage.Page) (bool, error) {
+	query := `SELECT COUNT(*) FROM tg_users where "user" = $1`
+	var countDB string
+	err := s.db.QueryRow(query, p.UserName).Scan(&countDB)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		} else {
+			return false, nil
+		}
+	}
+	number, err := strconv.Atoi(countDB)
+	if err != nil {
+		return false, err
+	}
+	if number <= 10 {
+		return false, nil
 	}
 	return true, nil
 }

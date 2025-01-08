@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"os"
 	"strings"
 	"tgBot/lib/errorsLib"
 	"tgBot/storage"
@@ -27,7 +28,8 @@ func (p *Processor) doCmd(text string, chatID int, username string) error {
 	}
 	log.Printf("DO_COMMAND(%v, %v)", text, username)
 
-	words := []string{"anime", "hentai", "porn"}
+	ban1 := os.Getenv("ban1")
+	words := []string{ban1}
 
 	if isAddCmd(text) {
 		for _, word := range words {
@@ -81,6 +83,14 @@ func (p *Processor) savePage(textURL string, chatID int, username string) (err e
 		URL:          textURL,
 		UserName:     username,
 		Associations: "",
+	}
+
+	isLimit, err := p.storage.IsLimit(context.Background(), page)
+	if err != nil {
+		return err
+	}
+	if isLimit {
+		return p.tg.SendMessage(chatID, msgLimitExceeded)
 	}
 
 	isExist, err := p.storage.IsExists(context.Background(), page)
