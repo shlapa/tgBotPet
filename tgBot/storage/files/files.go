@@ -112,6 +112,38 @@ func (s Storage) GetHistory(ctx context.Context, userName string) (pages []*stor
 	return pageList, nil
 }
 
+func (s Storage) SearchTraces(ctx context.Context, userName string) (pages []*storage.Page, err error) {
+	defer func() { err = errorsLib.Wrap("can't get history for user "+userName, err) }()
+
+	query := `SELECT "associations" FROM tg_users WHERE "user" = $1`
+	rows, err := s.db.QueryContext(ctx, query, userName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var pageList []*storage.Page
+	for rows.Next() {
+		var linkDB string
+		if err := rows.Scan(&linkDB); err != nil {
+			return nil, err
+		}
+		pageList = append(pageList, &storage.Page{
+			UserName:     userName,
+			Associations: linkDB,
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if len(pageList) == 0 {
+		return nil, errorsLib.ErrNoSavedPage
+	}
+	return pageList, nil
+}
+
 func (s Storage) Save(ctx context.Context, page *storage.Page) (err error) {
 	defer func() { err = errorsLib.Wrap("can't save page for user "+page.UserName, err) }()
 

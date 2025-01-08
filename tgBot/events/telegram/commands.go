@@ -13,14 +13,15 @@ import (
 )
 
 const (
-	Rnd        = "/rnd"
-	Help       = "/help"
-	Start      = "/start"
-	Delete     = "/delete"
-	LastLink   = "/get_last_link"
-	SearchLink = "/search_link"
-	GetHistory = "/get_history"
-	DeleteALl  = "/delete_all"
+	Rnd          = "/rnd"
+	Help         = "/help"
+	Start        = "/start"
+	Delete       = "/delete"
+	LastLink     = "/get_last_link"
+	SearchLink   = "/search_link"
+	GetHistory   = "/get_history"
+	DeleteALl    = "/delete_all"
+	SearchTraces = "/search_traces"
 )
 
 func (p *Processor) doCmd(text string, chatID int, username string) error {
@@ -94,9 +95,44 @@ func (p *Processor) doCmd(text string, chatID int, username string) error {
 		return p.getLastLink(chatID, username)
 	case GetHistory:
 		return p.getHistory(chatID, username)
+	case SearchTraces:
+		return p.searchTraces(chatID, username)
 	default:
 		return p.tg.SendMessage(chatID, msgUnknownCommand)
 	}
+}
+
+func (p *Processor) searchTraces(chatID int, username string) (err error) {
+	pages, err := p.storage.SearchTraces(context.Background(), username)
+	if err != nil {
+		if errors.Is(err, errorsLib.ErrNoSavedPage) {
+			return p.tg.SendMessage(chatID, msgNoSavedPages)
+		} else {
+			return err
+		}
+	}
+
+	if len(pages) == 0 {
+		return p.tg.SendMessage(chatID, msgNoSavedPages)
+	}
+
+	for _, page := range pages {
+		if len(page.Associations) == 0 {
+			return p.tg.SendMessage(chatID, msgHaveNotTraces)
+		}
+	}
+
+	if err := p.tg.SendMessage(chatID, "Милорд, взгляните, что мне удалось найти на этом пути! 🏹✨ Вот ваши следы..."); err != nil {
+		return err
+	}
+
+	for _, page := range pages {
+		if err := p.tg.SendMessage(chatID, page.Associations); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (p *Processor) deleteAll(chatID int, username string) (err error) {
@@ -141,6 +177,12 @@ func (p *Processor) searchLink(chatID int, pageLastLink *storage.Page) (err erro
 			return p.tg.SendMessage(chatID, msgNoSavedPages)
 		} else {
 			return err
+		}
+	}
+
+	for _, page := range pages {
+		if len(page.URL) == 0 {
+			return p.tg.SendMessage(chatID, msgNoSavedPages)
 		}
 	}
 

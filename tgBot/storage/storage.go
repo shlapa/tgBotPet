@@ -18,6 +18,7 @@ type Storage interface {
 	LastLink(ctx context.Context, userName string) (*Page, error)
 	SearchLink(ctx context.Context, p *Page) ([]*Page, error)
 	GetHistory(ctx context.Context, userName string) ([]*Page, error)
+	SearchTraces(ctx context.Context, userName string) ([]*Page, error)
 }
 
 type Page struct {
