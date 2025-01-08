@@ -124,6 +124,10 @@ func (p *Processor) getLastLink(chatID int, username string) (err error) {
 
 	p.lastLink[chatID] = page
 
+	if err = p.tg.SendMessage(chatID, "Желаешь добавить ассоциации к этому свитку? ✍️"); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -141,7 +145,13 @@ func (p *Processor) searchLink(chatID int, pageLastLink *storage.Page) (err erro
 	if err := p.tg.SendMessage(chatID, page.URL); err != nil {
 		return err
 	}
+
 	p.lastLink[chatID] = page
+
+	if err = p.tg.SendMessage(chatID, "Желаешь добавить ассоциации к этому свитку? ✍️"); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -166,6 +176,10 @@ func (p *Processor) getHistory(chatID int, username string) error {
 	}
 
 	p.lastLink[chatID] = pages[len(pages)-1]
+
+	if err = p.tg.SendMessage(chatID, "Желаешь добавить ассоциации к последниму свитку? ✍️"); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -255,6 +269,10 @@ func (p *Processor) sendRandom(chatID int, username string) (err error) {
 	}
 
 	p.lastLink[chatID] = page
+
+	if err = p.tg.SendMessage(chatID, "Желаешь добавить ассоциации к этому свитку? ✍️"); err != nil {
+		return err
+	}
 
 	return nil
 }
