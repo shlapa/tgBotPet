@@ -29,6 +29,8 @@ func (p *Processor) doCmd(text string, chatID int, username string) error {
 	}
 	log.Printf("DO_COMMAND(%v, %v)", text, username)
 
+	//Возможность ассуждать l;)
+
 	ban1 := os.Getenv("ban1")
 	ban2 := os.Getenv("ban2")
 	ban3 := os.Getenv("ban3")
