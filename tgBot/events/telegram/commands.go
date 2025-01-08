@@ -132,8 +132,9 @@ func (p *Processor) getLastLink(chatID int, username string) (err error) {
 }
 
 func (p *Processor) searchLink(chatID int, pageLastLink *storage.Page) (err error) {
-	defer func() { err = errorsLib.Wrap("cantGetLastLink", err) }()
-	page, err := p.storage.SearchLink(context.Background(), pageLastLink)
+	defer func() { err = errorsLib.Wrap("cantGetSearchLink", err) }()
+
+	pages, err := p.storage.SearchLink(context.Background(), pageLastLink)
 	if err != nil {
 		if errors.Is(err, errorsLib.ErrNoSavedPage) {
 			return p.tg.SendMessage(chatID, msgNoSavedPages)
@@ -142,13 +143,17 @@ func (p *Processor) searchLink(chatID int, pageLastLink *storage.Page) (err erro
 		}
 	}
 
-	if err := p.tg.SendMessage(chatID, page.URL); err != nil {
-		return err
+	for _, page := range pages {
+		if err := p.tg.SendMessage(chatID, page.URL); err != nil {
+			return err
+		}
 	}
 
-	p.lastLink[chatID] = page
+	if len(pages) > 0 {
+		p.lastLink[chatID] = pages[len(pages)-1]
+	}
 
-	if err = p.tg.SendMessage(chatID, "Желаешь добавить ассоциации к этому свитку? ✍️"); err != nil {
+	if err = p.tg.SendMessage(chatID, "Желаешь добавить ассоциации к последнему свитку? ✍️"); err != nil {
 		return err
 	}
 
@@ -177,7 +182,7 @@ func (p *Processor) getHistory(chatID int, username string) error {
 
 	p.lastLink[chatID] = pages[len(pages)-1]
 
-	if err = p.tg.SendMessage(chatID, "Желаешь добавить ассоциации к последниму свитку? ✍️"); err != nil {
+	if err = p.tg.SendMessage(chatID, "Желаешь добавить ассоциации к последнему свитку? ✍️"); err != nil {
 		return err
 	}
 

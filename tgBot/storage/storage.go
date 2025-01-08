@@ -16,7 +16,7 @@ type Storage interface {
 	IsExists(ctx context.Context, p *Page) (bool, error)
 	IsLimit(ctx context.Context, p *Page) (bool, error)
 	LastLink(ctx context.Context, userName string) (*Page, error)
-	SearchLink(ctx context.Context, p *Page) (*Page, error)
+	SearchLink(ctx context.Context, p *Page) ([]*Page, error)
 	GetHistory(ctx context.Context, userName string) ([]*Page, error)
 }
 

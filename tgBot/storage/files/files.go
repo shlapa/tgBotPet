@@ -46,22 +46,38 @@ func (s Storage) LastLink(ctx context.Context, userName string) (page *storage.P
 	return page, nil
 }
 
-func (s Storage) SearchLink(ctx context.Context, p *storage.Page) (page *storage.Page, err error) {
+func (s Storage) SearchLink(ctx context.Context, p *storage.Page) (pages []*storage.Page, err error) {
 	defer func() { err = errorsLib.Wrap("can't pick link for associations "+p.Associations, err) }()
-	query := `SELECT "link" FROM tg_users WHERE "associations" = $1 AND "user" = $2 ORDER BY RANDOM() DESC LIMIT 1`
-	var linkDB string
-	err = s.db.QueryRow(query, p.Associations, p.UserName).Scan(&linkDB)
+
+	query := `SELECT "link" FROM tg_users WHERE "associations" = $1 AND "user" = $2 ORDER BY RANDOM()`
+
+	rows, err := s.db.QueryContext(ctx, query, p.Associations, p.UserName)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errorsLib.ErrNoSavedPage
+		return nil, err
+	}
+	defer rows.Close()
+
+	// Создаем слайс для хранения страниц
+	var pageList []*storage.Page
+	for rows.Next() {
+		var linkDB string
+		if err := rows.Scan(&linkDB); err != nil {
+			return nil, err
 		}
+		pageList = append(pageList, &storage.Page{
+			URL: linkDB,
+		})
+	}
+
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	page = &storage.Page{
-		URL: linkDB,
+	if len(pageList) == 0 {
+		return nil, errorsLib.ErrNoSavedPage
 	}
-	return page, err
+
+	return pageList, nil
 }
 
 func (s Storage) GetHistory(ctx context.Context, userName string) (pages []*storage.Page, err error) {
