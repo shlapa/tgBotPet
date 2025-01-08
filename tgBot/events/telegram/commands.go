@@ -19,6 +19,7 @@ const (
 	Delete     = "/delete"
 	LastLink   = "/get_last_link"
 	SearchLink = "/search_link"
+	GetHistory = "/get_history"
 )
 
 func (p *Processor) doCmd(text string, chatID int, username string) error {
@@ -29,7 +30,12 @@ func (p *Processor) doCmd(text string, chatID int, username string) error {
 	log.Printf("DO_COMMAND(%v, %v)", text, username)
 
 	ban1 := os.Getenv("ban1")
-	words := []string{ban1}
+	ban2 := os.Getenv("ban2")
+	ban3 := os.Getenv("ban3")
+	ban1 = "ban1"
+	ban2 = "ban2"
+	ban3 = "ban3"
+	words := []string{ban1, ban2, ban3}
 
 	if isAddCmd(text) {
 		for _, word := range words {
@@ -56,6 +62,15 @@ func (p *Processor) doCmd(text string, chatID int, username string) error {
 		return p.Remove(chatID, pageLastLink)
 	}
 
+	if strings.HasPrefix(text, SearchLink) {
+		space := strings.TrimSpace(strings.TrimPrefix(text, SearchLink))
+		if space == "" {
+			return p.tg.SendMessage(chatID, "Милорд, мне нужен след, чтобы начать поиски. 🔍 Укажите его в формате: /search_link след1, след2 и так далее. 🗺️")
+		}
+		pageLastLink.Associations = space
+		return p.searchLink(chatID, pageLastLink)
+	}
+
 	switch text {
 	case Help:
 		return p.sendHelp(chatID)
@@ -63,9 +78,77 @@ func (p *Processor) doCmd(text string, chatID int, username string) error {
 		return p.sendRandom(chatID, username)
 	case Start:
 		return p.sendHello(chatID, username)
+	case LastLink:
+		return p.getLastLink(chatID, username)
+	case GetHistory:
+		return p.getHistory(chatID, username)
 	default:
 		return p.tg.SendMessage(chatID, msgUnknownCommand)
 	}
+}
+
+func (p *Processor) getLastLink(chatID int, username string) (err error) {
+	defer func() { err = errorsLib.Wrap("cantGetLastLink", err) }()
+
+	page, err := p.storage.LastLink(context.Background(), username)
+	if err != nil && errors.Is(err, errorsLib.ErrNoSavedPage) {
+		return p.tg.SendMessage(chatID, msgNoSavedPages)
+	}
+	if errors.Is(err, errorsLib.ErrNoSavedPage) {
+		return p.tg.SendMessage(chatID, msgHaveNotLinked)
+	}
+	if err := p.tg.SendMessage(chatID, page.URL); err != nil {
+		return err
+	}
+
+	p.lastLink[chatID] = page
+
+	return nil
+}
+
+func (p *Processor) searchLink(chatID int, pageLastLink *storage.Page) (err error) {
+	defer func() { err = errorsLib.Wrap("cantGetLastLink", err) }()
+	page, err := p.storage.SearchLink(context.Background(), pageLastLink)
+	if err != nil {
+		if errors.Is(err, errorsLib.ErrNoSavedPage) {
+			return p.tg.SendMessage(chatID, msgNoSavedPages)
+		} else if errors.Is(err, errorsLib.ErrNoSavedPage) {
+			return p.tg.SendMessage(chatID, msgHaveNotLinked)
+		} else {
+			return err
+		}
+	}
+
+	if err := p.tg.SendMessage(chatID, page.URL); err != nil {
+		return err
+	}
+	p.lastLink[chatID] = page
+	return nil
+}
+
+func (p *Processor) getHistory(chatID int, username string) error {
+	pages, err := p.storage.GetHistory(context.Background(), username)
+	if err != nil {
+		if errors.Is(err, errorsLib.ErrNoSavedPage) {
+			return p.tg.SendMessage(chatID, msgNoSavedPages)
+		} else {
+			return err
+		}
+	}
+
+	if len(pages) == 0 {
+		return p.tg.SendMessage(chatID, msgHaveNotLinked)
+	}
+
+	for _, page := range pages {
+		if err := p.tg.SendMessage(chatID, page.URL); err != nil {
+			return err
+		}
+	}
+
+	p.lastLink[chatID] = pages[len(pages)-1]
+
+	return nil
 }
 
 func (p *Processor) Remove(chatID int, pageLastLink *storage.Page) error {
@@ -125,7 +208,7 @@ func (p *Processor) AddAssociations(chatID int, input string) error {
 func (p *Processor) processAssociations(chatID int, input string) error {
 	page, ok := p.lastLink[chatID]
 	if !ok {
-		return p.tg.SendMessage(chatID, "Не удалось найти твой последний свиток. Попробуй снова, о рыцарь. 🏰")
+		return p.tg.SendMessage(chatID, "Рад бы поболтать, о славный рыцарь, но королевство в опасности, а работы невпроворот! 🏰⚔️ Попробуй задать команду, чтобы помочь делу!\n")
 	}
 
 	// Сохранение ассоциаций
@@ -139,14 +222,17 @@ func (p *Processor) processAssociations(chatID int, input string) error {
 }
 
 func (p *Processor) sendRandom(chatID int, username string) (err error) {
-	defer func() { err = errorsLib.Wrap("cantSavePage", err) }()
+	defer func() { err = errorsLib.Wrap("cantPickPage", err) }()
 
 	page, err := p.storage.PickRandom(context.Background(), username)
-	if err != nil && errors.Is(err, errorsLib.ErrNoSavedPage) {
-		return p.tg.SendMessage(chatID, msgHaveNotLinked)
-	}
-	if errors.Is(err, errorsLib.ErrNoSavedPage) {
-		return p.tg.SendMessage(chatID, msgNoSavedPages)
+	if err != nil {
+		if errors.Is(err, errorsLib.ErrNoSavedPage) {
+			return p.tg.SendMessage(chatID, msgNoSavedPages)
+		} else if errors.Is(err, errorsLib.ErrNoSavedPage) {
+			return p.tg.SendMessage(chatID, msgHaveNotLinked)
+		} else {
+			return err
+		}
 	}
 	if err := p.tg.SendMessage(chatID, page.URL); err != nil {
 		return err

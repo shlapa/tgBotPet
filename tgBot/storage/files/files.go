@@ -25,6 +25,76 @@ func NewStorage(basePath string, db *sql.DB) Storage {
 	}
 }
 
+func (s Storage) LastLink(ctx context.Context, userName string) (page *storage.Page, err error) {
+	defer func() { err = errorsLib.Wrap("can't get last link", err) }()
+	query := `SELECT * FROM tg_users WHERE "user" = $1 ORDER BY id_link DESC LIMIT 1`
+	var linkDB string
+	err = s.db.QueryRow(query, userName).Scan(&linkDB)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errorsLib.ErrNoSavedPage
+		}
+		return nil, err
+	}
+
+	page = &storage.Page{
+		UserName: userName,
+		URL:      linkDB,
+	}
+	return page, err
+}
+
+func (s Storage) SearchLink(ctx context.Context, p *storage.Page) (page *storage.Page, err error) {
+	defer func() { err = errorsLib.Wrap("can't pick link", err) }()
+	query := `SELECT "link" FROM tg_users where "associations" = $1 ORDER BY RANDOM() DESC LIMIT 1`
+	var linkDB string
+	err = s.db.QueryRow(query, p.Associations).Scan(&linkDB)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errorsLib.ErrNoSavedPage
+		}
+		return nil, err
+	}
+
+	page = &storage.Page{
+		URL: linkDB,
+	}
+	return page, err
+}
+
+func (s Storage) GetHistory(ctx context.Context, userName string) (pages []*storage.Page, err error) {
+	defer func() { err = errorsLib.Wrap("can't get history", err) }() // Обертка ошибки для улучшения контекста
+
+	query := `SELECT "link" FROM tg_users WHERE "user" = $1`
+	rows, err := s.db.QueryContext(ctx, query, userName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var pageList []*storage.Page
+
+	for rows.Next() {
+		var linkDB string
+		if err := rows.Scan(&linkDB); err != nil {
+			return nil, err
+		}
+		pageList = append(pageList, &storage.Page{
+			UserName: userName,
+			URL:      linkDB,
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if len(pageList) == 0 {
+		return nil, errorsLib.ErrNoSavedPage
+	}
+	return pageList, nil
+}
+
 func (s Storage) Save(ctx context.Context, page *storage.Page) (err error) {
 	defer func() { err = errorsLib.Wrap("can't save page", err) }()
 	query := `INSERT INTO tg_users ("user", "link", "associations") VALUES ($1, $2, $3)`
